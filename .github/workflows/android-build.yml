@@ -7,9 +7,12 @@ on:
       - 'generated-app/**'
       - '.github/workflows/android-build.yml'
 
+permissions:
+  contents: read
+
 jobs:
-  build:
-    if: ${{ hashFiles('generated-app/**') != '' }}
+  build-debug:
+    name: Build Debug APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -17,22 +20,67 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Set up JDK
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Verify Android project
+        run: |
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle
+
       - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
-      - name: Build release bundle
-        run: ./gradlew bundleRelease --no-daemon
-      - name: Upload APK and AAB
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: ark-android-build
-          path: |
-            generated-app/app/build/outputs/apk/debug/*.apk
-            generated-app/app/build/outputs/bundle/release/*.aab
+          name: ark-debug-apk
+          path: generated-app/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  build-release:
+    name: Build Release AAB
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: generated-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Verify Android project
+        run: |
+          test -f settings.gradle
+          test -f build.gradle
+          test -f app/build.gradle
+
+      - name: Build release AAB
+        run: gradle bundleRelease --no-daemon --stacktrace
+
+      - name: Upload release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ark-release-aab
+          path: generated-app/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
