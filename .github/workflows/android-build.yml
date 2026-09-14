@@ -1,0 +1,38 @@
+name: ARK Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'generated-app/**'
+      - '.github/workflows/android-build.yml'
+
+jobs:
+  build:
+    if: ${{ hashFiles('generated-app/**') != '' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: generated-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Build release bundle
+        run: ./gradlew bundleRelease --no-daemon
+      - name: Upload APK and AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ark-android-build
+          path: |
+            generated-app/app/build/outputs/apk/debug/*.apk
+            generated-app/app/build/outputs/bundle/release/*.aab
